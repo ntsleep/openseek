@@ -11,5 +11,15 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["seeklite*"]
 
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "pytest-cov>=7"]
+
+[tool.coverage.run]
+source = ["seeklite"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
 [project.scripts]
 seeklite = "seeklite.cli:main"

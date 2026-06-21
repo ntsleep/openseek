@@ -67,6 +67,19 @@ seeklite disconnect
 uv run python -m seeklite ring --duration 3
 ```
 
+## Tests
+
+```bash
+uv run pytest
+# or
+pytest
+
+# With coverage
+uv run pytest --cov --cov-report=term-missing
+# or
+pytest --cov --cov-report=term-missing
+```
+
 ## Protocol
 
 Authentication is required before any alert write — see `project_decription.md` for full protocol details.

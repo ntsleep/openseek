@@ -25,3 +25,7 @@ uv.lock
 legacy_scripts/
 seek_src/
 *.apk
+
+# Coverage
+.coverage
+htmlcov/
