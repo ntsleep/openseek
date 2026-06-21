@@ -1,0 +1,15 @@
+[project]
+name = "seeklite"
+version = "0.2.0"
+requires-python = ">=3.14"
+dependencies = ["bleak>=0.22", "python-dotenv>=1.0"]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["seeklite*"]
+
+[project.scripts]
+seeklite = "seeklite.cli:main"

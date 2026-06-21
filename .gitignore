@@ -1,0 +1,27 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+.venv*/
+.uv/
+uv.lock
+
+# Environment
+.env
+
+# Project
+legacy_scripts/
+seek_src/
+*.apk
