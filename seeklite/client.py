@@ -33,23 +33,23 @@ _BEACON_IDS = {0x004C, 0x00E0, 0x00FF, 0x0130, 0x0157, 0x018B, 0x01AC}
 _NOT_CONNECTED_MSG = "Not connected. Call connect() first."
 
 
-def _pick_mfg_payload(mfg: dict[int, bytes]) -> bytes | None:
+def _pick_mfg_payload(manufacturer_data: dict[int, bytes]) -> bytes | None:
     """Return the first manufacturer payload that is not a known beacon ID.
 
     Falls back to the first payload if all are beacons.
     """
-    if not mfg:
+    if not manufacturer_data:
         return None
-    for cid, payload in mfg.items():
-        if cid not in _BEACON_IDS:
+    for company_id, payload in manufacturer_data.items():
+        if company_id not in _BEACON_IDS:
             return payload
-    return next(iter(mfg.values()))
+    return next(iter(manufacturer_data.values()))
 
 
 def _auth_from_mac(address: str) -> int:
     """Compute the auth byte from the device MAC address directly."""
-    raw = bytes.fromhex(address.replace(":", ""))
-    return compute_auth_byte(raw)
+    mac_bytes = bytes.fromhex(address.replace(":", ""))
+    return compute_auth_byte(mac_bytes)
 
 
 class SeekLiteClient:
@@ -93,8 +93,8 @@ class SeekLiteClient:
         )
         await asyncio.sleep(0.5)
 
-        svc = self._client.services.get_service(SERVICE_IMMEDIATE_ALERT)
-        self._alert_handle = svc.get_characteristic(CHAR_ALERT_LEVEL).handle
+        service = self._client.services.get_service(SERVICE_IMMEDIATE_ALERT)
+        self._alert_handle = service.get_characteristic(CHAR_ALERT_LEVEL).handle
 
         await self._client.start_notify(CHAR_FFC6_NOTIFY, lambda _s, _d: None)
         await asyncio.sleep(0.5)
@@ -128,12 +128,12 @@ class SeekLiteClient:
         """Read device information characteristics and battery level."""
         self._check_connected()
 
-        async def _read(short: str, uuid: str) -> str:
+        async def _read(uuid_short: str, uuid: str) -> str:
             try:
-                val = await self._client.read_gatt_char(uuid)
-                return val.decode(errors="ignore").strip("\x00")
+                value = await self._client.read_gatt_char(uuid)
+                return value.decode(errors="ignore").strip("\x00")
             except Exception:
-                return f"<read failed: {short}>"
+                return f"<read failed: {uuid_short}>"
 
         info = {
             "manufacturer": await _read("2A29", CHAR_MANUFACTURER),

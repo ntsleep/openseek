@@ -25,18 +25,18 @@ def parse_ffc6_packet(data: bytes) -> dict[str, int | None]:
     has_battery = bool(flags & 0x40)
     has_button = bool(flags & 0x20)
 
-    idx = 1
+    index = 1
 
-    if has_extended and len(data) > idx:
-        result["heartbeat_loss"] = data[idx]
-        idx += 1
+    if has_extended and len(data) > index:
+        result["heartbeat_loss"] = data[index]
+        index += 1
 
-    if has_battery and len(data) > idx:
-        result["battery"] = data[idx]
-        idx += 1
+    if has_battery and len(data) > index:
+        result["battery"] = data[index]
+        index += 1
 
-    if has_button and len(data) > idx:
-        result["button_state"] = data[idx]
-        idx += 1
+    if has_button and len(data) > index:
+        result["button_state"] = data[index]
+        index += 1
 
     return result

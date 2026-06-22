@@ -4,8 +4,8 @@ import uuid
 UUID_BASE = "0000-1000-8000-00805F9B34FB"
 
 
-def _uuid(short: str) -> uuid.UUID:
-    return uuid.UUID(f"0000{short}-{UUID_BASE}")
+def _uuid(uuid_short: str) -> uuid.UUID:
+    return uuid.UUID(f"0000{uuid_short}-{UUID_BASE}")
 
 
 # Custom service FFF0

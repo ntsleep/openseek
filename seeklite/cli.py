@@ -133,31 +133,31 @@ def main() -> None:
         help="Tracker MAC address (default: SEEK_MAC env var or .env file)",
     )
 
-    sub = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    p_ring = sub.add_parser("ring", help="Ring the tracker for N seconds")
-    p_ring.add_argument(
+    ring_parser = subparsers.add_parser("ring", help="Ring the tracker for N seconds")
+    ring_parser.add_argument(
         "--duration", "-d", type=float, default=3.0, help="Ring duration in seconds",
     )
-    p_ring.set_defaults(func=_cmd_ring)
+    ring_parser.set_defaults(func=_cmd_ring)
 
-    p_stop = sub.add_parser("stop", help="Stop an active alert")
-    p_stop.set_defaults(func=_cmd_stop)
+    stop_parser = subparsers.add_parser("stop", help="Stop an active alert")
+    stop_parser.set_defaults(func=_cmd_stop)
 
-    p_info = sub.add_parser("info", help="Read device information and battery")
-    p_info.set_defaults(func=_cmd_info)
+    info_parser = subparsers.add_parser("info", help="Read device information and battery")
+    info_parser.set_defaults(func=_cmd_info)
 
-    p_monitor = sub.add_parser("monitor", help="Subscribe to FFC6 notifications")
-    p_monitor.set_defaults(func=_cmd_monitor)
+    monitor_parser = subparsers.add_parser("monitor", help="Subscribe to FFC6 notifications")
+    monitor_parser.set_defaults(func=_cmd_monitor)
 
-    p_scan = sub.add_parser("scan", help="Check if tracker is advertising")
-    p_scan.add_argument(
+    scan_parser = subparsers.add_parser("scan", help="Check if tracker is advertising")
+    scan_parser.add_argument(
         "--timeout", "-t", type=int, default=10, help="Scan duration in seconds",
     )
-    p_scan.set_defaults(func=_cmd_scan)
+    scan_parser.set_defaults(func=_cmd_scan)
 
-    p_disc = sub.add_parser("disconnect", help="Force-disconnect a stuck connection")
-    p_disc.set_defaults(func=_cmd_disconnect)
+    disconnect_parser = subparsers.add_parser("disconnect", help="Force-disconnect a stuck connection")
+    disconnect_parser.set_defaults(func=_cmd_disconnect)
 
     args = parser.parse_args()
     asyncio.run(args.func(args))
