@@ -1,3 +1,4 @@
+"""GATT UUIDs and protocol constants for the Seek Lite tracker."""
 import uuid
 
 UUID_BASE = "0000-1000-8000-00805F9B34FB"

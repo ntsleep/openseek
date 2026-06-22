@@ -1,18 +1,18 @@
 import uuid
 
 from seeklite.constants import (
-    _uuid,
-    CHAR_FFF1_AUTH,
+    ALERT_HIGH,
+    ALERT_MILD,
+    ALERT_NONE,
     CHAR_ALERT_LEVEL,
     CHAR_BATTERY_LEVEL,
-    SERVICE_IMMEDIATE_ALERT,
-    SERVICE_FFC0,
     CHAR_FFC6_NOTIFY,
+    CHAR_FFF1_AUTH,
     COMPANY_ID_SEEK,
     HEARTBEAT_INTERVAL,
-    ALERT_NONE,
-    ALERT_MILD,
-    ALERT_HIGH,
+    SERVICE_FFC0,
+    SERVICE_IMMEDIATE_ALERT,
+    _uuid,
 )
 
 

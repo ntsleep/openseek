@@ -78,6 +78,11 @@ pytest
 uv run pytest --cov --cov-report=term-missing
 # or
 pytest --cov --cov-report=term-missing
+
+# Lint
+uv run ruff check
+# or
+ruff check
 ```
 
 ## Protocol

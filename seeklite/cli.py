@@ -1,3 +1,4 @@
+"""CLI entry point for the Seek Lite tracker."""
 import argparse
 import asyncio
 import os
@@ -5,6 +6,7 @@ import signal
 import sys
 from pathlib import Path
 
+from bleak import BleakScanner
 from dotenv import load_dotenv
 
 from seeklite.client import SeekLiteClient
@@ -12,6 +14,7 @@ from seeklite.ffc6 import parse_ffc6_packet
 
 
 def _get_address(args: argparse.Namespace) -> str:
+    """Resolve the tracker MAC address from CLI flag, env var, or exit."""
     addr = args.address or os.environ.get("SEEK_MAC")
     if not addr:
         print("error: provide --address, set SEEK_MAC in .env, or export SEEK_MAC")
@@ -68,7 +71,7 @@ async def _cmd_monitor(args: argparse.Namespace) -> None:
         await client.connect()
         print("Subscribed to FFC6 notifications. Press Ctrl+C to stop.\n")
 
-        def handler(sender, data):
+        def handler(_sender: int, data: bytes) -> None:
             parsed = parse_ffc6_packet(data)
             parts = []
             for k, v in parsed.items():
@@ -80,7 +83,7 @@ async def _cmd_monitor(args: argparse.Namespace) -> None:
 
         stop_event = asyncio.Event()
 
-        def _signal_handler():
+        def _signal_handler() -> None:
             stop_event.set()
 
         loop = asyncio.get_running_loop()
@@ -96,13 +99,12 @@ async def _cmd_monitor(args: argparse.Namespace) -> None:
 
 async def _cmd_scan(args: argparse.Namespace) -> None:
     address = _get_address(args)
-    from bleak import BleakScanner
 
     print(f"Scanning for {args.timeout} seconds...")
     devices = await BleakScanner.discover(timeout=args.timeout, return_adv=True)
-    for addr, (device, adv_data) in devices.items():
+    for addr, (_device, adv_data) in devices.items():
         if addr.lower() == address.lower():
-            print(f"Tracker is advertising!")
+            print("Tracker is advertising!")
             print(f"  RSSI: {adv_data.rssi}")
             print(f"  Manufacturer data: {adv_data.manufacturer_data}")
             return
@@ -122,7 +124,8 @@ async def _cmd_disconnect(args: argparse.Namespace) -> None:
         print(f"Error: {e}")
 
 
-def main():
+def main() -> None:
+    """Parse arguments and dispatch to the appropriate command handler."""
     load_dotenv(Path(".env"))
     parser = argparse.ArgumentParser(description="Seek Lite tracker CLI")
     parser.add_argument(
@@ -134,7 +137,7 @@ def main():
 
     p_ring = sub.add_parser("ring", help="Ring the tracker for N seconds")
     p_ring.add_argument(
-        "--duration", "-d", type=float, default=3.0, help="Ring duration in seconds"
+        "--duration", "-d", type=float, default=3.0, help="Ring duration in seconds",
     )
     p_ring.set_defaults(func=_cmd_ring)
 
@@ -149,7 +152,7 @@ def main():
 
     p_scan = sub.add_parser("scan", help="Check if tracker is advertising")
     p_scan.add_argument(
-        "--timeout", "-t", type=int, default=10, help="Scan duration in seconds"
+        "--timeout", "-t", type=int, default=10, help="Scan duration in seconds",
     )
     p_scan.set_defaults(func=_cmd_scan)
 

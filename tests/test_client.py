@@ -1,12 +1,10 @@
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from seeklite.client import (
-    _pick_mfg_payload,
-    _auth_from_mac,
     SeekLiteClient,
+    _auth_from_mac,
+    _pick_mfg_payload,
 )
 
 
@@ -20,13 +18,13 @@ class TestPickMfgPayload:
 
     def test_skips_apple_beacon(self):
         result = _pick_mfg_payload(
-            {0x004C: b"\x02\x15xyz", 0x6313: b"\x01\xba\x01\x06\xe0\x82"}
+            {0x004C: b"\x02\x15xyz", 0x6313: b"\x01\xba\x01\x06\xe0\x82"},
         )
         assert result == b"\x01\xba\x01\x06\xe0\x82"
 
     def test_returns_first_non_beacon(self):
         result = _pick_mfg_payload(
-            {0x004C: b"\x01", 0x00E0: b"\x02", 0x6313: b"\x03"}
+            {0x004C: b"\x01", 0x00E0: b"\x02", 0x6313: b"\x03"},
         )
         assert result == b"\x03"
 
@@ -107,7 +105,7 @@ def mock_bleak():
         "01:ba:01:06:e0:82": (
             FakeBLEDevice,
             FakeAdvData({0x6313: b"\x01\xba\x01\x06\xe0\x82"}),
-        )
+        ),
     }
     fake_services = FakeServices(
         [
@@ -120,7 +118,7 @@ def mock_bleak():
                 26: "00002a24-0000-1000-8000-00805f9b34fb",
                 30: "00002a26-0000-1000-8000-00805f9b34fb",
             }),
-        ]
+        ],
     )
 
     mock_client = AsyncMock()
@@ -158,7 +156,7 @@ async def test_connect_fallback_to_mac(mock_bleak):
             FakeService("00001802-0000-1000-8000-00805f9b34fb", {14: "00002a06-0000-1000-8000-00805f9b34fb"}),
             FakeService("0000fff0-0000-1000-8000-00805f9b34fb", {39: "0000fff1-0000-1000-8000-00805f9b34fb"}),
             FakeService("0000ffc0-0000-1000-8000-00805f9b34fb", {58: "0000ffc6-0000-1000-8000-00805f9b34fb"}),
-        ]
+        ],
     )
     with patch("seeklite.client.BleakScanner.discover", return_value={}):
         client = SeekLiteClient("01:BA:01:06:E0:82")
