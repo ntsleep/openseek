@@ -1,5 +1,7 @@
 # Seek Lite
 
+*This is an independent, unofficial library. Not affiliated with SnappWish LLC.*
+
 Open-source Python CLI for the Seek Lite BLE tracker (SFST212, SnappWish LLC). No official app, no embedded trackers.
 
 ## Install

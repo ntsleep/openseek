@@ -14,8 +14,8 @@ def test_two_bytes():
 
 
 def test_known_manufacturer_payload():
-    payload = b"\x01\xba\x01\x06\xe0\x82"
-    assert compute_auth_byte(payload) == 0xDE
+    payload = b"\xde\xad\xbe\xef\xca\xfe"
+    assert compute_auth_byte(payload) == 0x16
 
 
 def test_xor_is_commutative():
