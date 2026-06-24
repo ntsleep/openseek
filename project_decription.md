@@ -90,7 +90,7 @@ This matches the logic in the official app's `bus_ble/a.java:b()` method.
 |---|---|---|
 | `auth.py` | `compute_auth_byte(payload: bytes) -> int` | XOR auth byte from manufacturer payload |
 | `ffc6.py` | `parse_ffc6_packet(data: bytes) -> dict[str, int \| None]` | Parse FFC6 notification → keys: `heartbeat_loss`, `battery`, `button_state` |
-| `constants.py` | All `SERVICE_*`, `CHAR_*` UUIDs, `COMPANY_ID_SEEK`, `ALERT_*`, `HEARTBEAT_INTERVAL` | GATT UUID and protocol constants |
+| `constants.py` | All `SERVICE_*`, `CHAR_*` UUIDs, `ALERT_*`, `HEARTBEAT_INTERVAL` | GATT UUID and protocol constants |
 | `client.py` | `SeekLiteClient` class | BLE client — connect, auth, ring, stop, read info, subscribe FFC6 |
 | `cli.py` | `main()` | CLI entry point (see README) |
 

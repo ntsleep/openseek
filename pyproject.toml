@@ -51,5 +51,8 @@ ignore = [
     "PLC0415", # occasional lazy imports in tests ok
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [project.scripts]
 seeklite = "seeklite.cli:main"

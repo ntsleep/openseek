@@ -1,10 +1,17 @@
 """CLI entry point for the Seek Lite tracker."""
+from __future__ import annotations
+
 import argparse
 import asyncio
+import contextlib
 import os
 import signal
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 from bleak import BleakScanner
 from dotenv import load_dotenv
@@ -22,53 +29,44 @@ def _get_address(args: argparse.Namespace) -> str:
     return addr
 
 
-async def _cmd_ring(args: argparse.Namespace) -> None:
+@contextlib.asynccontextmanager
+async def _connected_client(args: argparse.Namespace) -> AsyncIterator[SeekLiteClient]:
+    """Connect to the tracker and yield the client, disconnecting on exit."""
     address = _get_address(args)
     client = SeekLiteClient(address)
+    print("Connecting and authenticating...")
+    await client.connect()
     try:
-        print("Connecting and authenticating...")
-        await client.connect()
+        yield client
+    finally:
+        await client.disconnect()
+
+
+async def _cmd_ring(args: argparse.Namespace) -> None:
+    async with _connected_client(args) as client:
         print("Connected. Ringing...")
         await client.ring(args.duration)
         print("Stopped.")
-    finally:
-        await client.disconnect()
 
 
 async def _cmd_stop(args: argparse.Namespace) -> None:
-    address = _get_address(args)
-    client = SeekLiteClient(address)
-    try:
-        print("Connecting and authenticating...")
-        await client.connect()
+    async with _connected_client(args) as client:
         print("Stopping alert...")
         await client.stop()
         print("Done.")
-    finally:
-        await client.disconnect()
 
 
 async def _cmd_info(args: argparse.Namespace) -> None:
-    address = _get_address(args)
-    client = SeekLiteClient(address)
-    try:
-        print("Connecting and authenticating...")
-        await client.connect()
+    async with _connected_client(args) as client:
         print("\nDevice Info:")
         print("------------")
         info = await client.read_info()
         for key, value in info.items():
             print(f"  {key}: {value}")
-    finally:
-        await client.disconnect()
 
 
 async def _cmd_monitor(args: argparse.Namespace) -> None:
-    address = _get_address(args)
-    client = SeekLiteClient(address)
-    try:
-        print("Connecting and authenticating...")
-        await client.connect()
+    async with _connected_client(args) as client:
         print("Subscribed to FFC6 notifications. Press Ctrl+C to stop.\n")
 
         def handler(_sender: int, data: bytes) -> None:
@@ -91,9 +89,8 @@ async def _cmd_monitor(args: argparse.Namespace) -> None:
         loop.add_signal_handler(signal.SIGTERM, _signal_handler)
 
         await stop_event.wait()
-    finally:
+
         await client.unsubscribe_ffc6()
-        await client.disconnect()
         print("\nDisconnected.")
 
 
@@ -112,21 +109,19 @@ async def _cmd_scan(args: argparse.Namespace) -> None:
 
 
 async def _cmd_disconnect(args: argparse.Namespace) -> None:
-    address = _get_address(args)
-    client = SeekLiteClient(address)
     try:
-        print("Connecting and authenticating...")
-        await client.connect()
-        print("Disconnecting...")
-        await client.disconnect()
-        print("Done.")
+        async with _connected_client(args) as client:
+            print("Disconnecting...")
+            await client.disconnect()
+            print("Done.")
     except Exception as e:
         print(f"Error: {e}")
 
 
 def main() -> None:
     """Parse arguments and dispatch to the appropriate command handler."""
-    load_dotenv(Path(".env"))
+    dotenv_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(dotenv_path)
     parser = argparse.ArgumentParser(description="Seek Lite tracker CLI")
     parser.add_argument(
         "--address",

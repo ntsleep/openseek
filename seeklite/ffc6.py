@@ -1,5 +1,7 @@
 """Parse FFC6 notification packets from the Seek Lite tracker."""
 
+__all__ = ["parse_ffc6_packet"]
+
 
 def parse_ffc6_packet(data: bytes) -> dict[str, int | None]:
     """Parse a single FFC6 notification payload.

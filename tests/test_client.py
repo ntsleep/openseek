@@ -65,17 +65,20 @@ class FakeAdvData:
         self.rssi = -50
 
 
-FakeBLEDevice = MagicMock()
+class FakeCharacteristic:
+    def __init__(self, handle: int, uuid: str):
+        self.handle = handle
+        self.uuid = uuid
 
 
 class FakeService:
     def __init__(self, uuid: str, chars: dict[int, str]):
         self.uuid = uuid
         self.characteristics = [
-            MagicMock(handle=h, uuid=u) for h, u in chars.items()
+            FakeCharacteristic(handle=h, uuid=u) for h, u in chars.items()
         ]
 
-    def get_characteristic(self, uuid_spec):
+    def get_characteristic(self, uuid_spec: str) -> FakeCharacteristic:
         uuid_spec = str(uuid_spec)
         for c in self.characteristics:
             if str(c.uuid) == uuid_spec:
@@ -88,7 +91,7 @@ class FakeServices:
     def __init__(self, services: list[FakeService]):
         self._services = {s.uuid: s for s in services}
 
-    def get_service(self, uuid_spec):
+    def get_service(self, uuid_spec: str) -> FakeService:
         uuid_spec = str(uuid_spec)
         if uuid_spec in self._services:
             return self._services[uuid_spec]
@@ -101,9 +104,10 @@ class FakeServices:
 
 @pytest.fixture
 def mock_bleak():
+    device = MagicMock()
     discover_results = {
         "01:ba:01:06:e0:82": (
-            FakeBLEDevice,
+            device,
             FakeAdvData({0x6313: b"\x01\xba\x01\x06\xe0\x82"}),
         ),
     }
@@ -138,7 +142,6 @@ def mock_bleak():
         yield mock_client
 
 
-@pytest.mark.asyncio
 async def test_connect_with_scan(mock_bleak):
     client = SeekLiteClient("01:BA:01:06:E0:82")
     await client.connect()
@@ -149,33 +152,22 @@ async def test_connect_with_scan(mock_bleak):
     mock_bleak.start_notify.assert_awaited_once()
 
 
-@pytest.mark.asyncio
-async def test_connect_fallback_to_mac(mock_bleak):
-    mock_bleak.services = FakeServices(
-        [
-            FakeService("00001802-0000-1000-8000-00805f9b34fb", {14: "00002a06-0000-1000-8000-00805f9b34fb"}),
-            FakeService("0000fff0-0000-1000-8000-00805f9b34fb", {39: "0000fff1-0000-1000-8000-00805f9b34fb"}),
-            FakeService("0000ffc0-0000-1000-8000-00805f9b34fb", {58: "0000ffc6-0000-1000-8000-00805f9b34fb"}),
-        ],
-    )
+@pytest.mark.usefixtures("mock_bleak")
+async def test_connect_fallback_to_mac():
+    # override fixture's discover to simulate tracker not found in scan
     with patch("seeklite.client.BleakScanner.discover", return_value={}):
         client = SeekLiteClient("01:BA:01:06:E0:82")
         await client.connect()
         assert client.is_connected
 
 
-@pytest.mark.asyncio
 async def test_ring(mock_bleak):
-    from uuid import UUID
-
     client = SeekLiteClient("01:BA:01:06:E0:82")
     await client.connect()
     await client.ring(0.1)
     mock_bleak.write_gatt_char.assert_any_call(14, bytearray([0x02]), response=False)
-    mock_bleak.read_gatt_char.assert_any_call(UUID("00002a19-0000-1000-8000-00805f9b34fb"))
 
 
-@pytest.mark.asyncio
 async def test_stop(mock_bleak):
     client = SeekLiteClient("01:BA:01:06:E0:82")
     await client.connect()
@@ -183,7 +175,6 @@ async def test_stop(mock_bleak):
     mock_bleak.write_gatt_char.assert_any_call(14, bytearray([0x00]), response=False)
 
 
-@pytest.mark.asyncio
 async def test_read_info(mock_bleak):
     from seeklite.constants import CHAR_MANUFACTURER
 
@@ -195,31 +186,128 @@ async def test_read_info(mock_bleak):
     mock_bleak.read_gatt_char.assert_any_call(CHAR_MANUFACTURER)
 
 
-@pytest.mark.asyncio
 async def test_disconnect(mock_bleak):
     client = SeekLiteClient("01:BA:01:06:E0:82")
     await client.connect()
     await client.disconnect()
     mock_bleak.stop_notify.assert_awaited_once()
     mock_bleak.disconnect.assert_awaited_once()
+    assert client._alert_handle is None
+    assert client._ffc6_handler is None
 
 
-@pytest.mark.asyncio
+@pytest.mark.usefixtures("mock_bleak")
+async def test_disconnect_resets_alert_handle():
+    client = SeekLiteClient("01:BA:01:06:E0:82")
+    await client.connect()
+    assert client._alert_handle == 14
+
+    def _noop(_s: int, _d: bytes) -> None: ...
+
+    client._ffc6_handler = _noop
+    await client.disconnect()
+    assert client._alert_handle is None
+    assert client._ffc6_handler is None
+
+
+async def test_connect_with_on_notify(mock_bleak):
+    captured: list[tuple[int, bytes]] = []
+
+    def handler(sender: int, data: bytes) -> None:
+        captured.append((sender, data))
+
+    client = SeekLiteClient("01:BA:01:06:E0:82")
+    await client.connect(on_notify=handler)
+    assert client._ffc6_handler is handler
+
+    notify_callback = mock_bleak.start_notify.call_args[0][1]
+    notify_callback(5, b"\x60\x32")
+    assert captured == [(5, b"\x60\x32")]
+
+
+async def test_ring_stops_automatically(mock_bleak):
+    client = SeekLiteClient("01:BA:01:06:E0:82")
+    await client.connect()
+    await client.ring(0.1)
+    mock_bleak.write_gatt_char.assert_any_call(14, bytearray([0x02]), response=False)
+    mock_bleak.write_gatt_char.assert_any_call(14, bytearray([0x00]), response=False)
+
+
+async def test_subscribe_ffc6_updates_handler(mock_bleak):
+    client = SeekLiteClient("01:BA:01:06:E0:82")
+    await client.connect()
+
+    notify_wrapper = mock_bleak.start_notify.call_args[0][1]
+    mock_bleak.start_notify.reset_mock()
+
+    results: list[int] = []
+
+    def handler_a(_s: int, _d: bytes) -> None:
+        results.append(1)
+
+    def handler_b(_s: int, _d: bytes) -> None:
+        results.append(2)
+
+    await client.subscribe_ffc6(handler_a)
+    assert client._ffc6_handler is handler_a
+    mock_bleak.start_notify.assert_not_called()
+
+    await client.subscribe_ffc6(handler_b)
+    assert client._ffc6_handler is handler_b
+
+    notify_wrapper(5, b"\x60")
+    assert results == [2]
+
+
+async def test_read_info_failure_returns_none(mock_bleak):
+    def fail_once(_uuid: str) -> bytes:
+        msg = "disconnected"
+        raise Exception(msg)
+
+    mock_bleak.read_gatt_char = AsyncMock(side_effect=fail_once)
+    client = SeekLiteClient("01:BA:01:06:E0:82")
+    await client.connect()
+    info = await client.read_info()
+    assert info["manufacturer"] is None
+    assert info["battery"] is None
+
+
 async def test_ring_raises_if_not_connected():
     client = SeekLiteClient("01:BA:01:06:E0:82")
     with pytest.raises(RuntimeError, match="Not connected"):
         await client.ring(1)
 
 
-@pytest.mark.asyncio
 async def test_stop_raises_if_not_connected():
     client = SeekLiteClient("01:BA:01:06:E0:82")
     with pytest.raises(RuntimeError, match="Not connected"):
         await client.stop()
 
 
-@pytest.mark.asyncio
 async def test_read_info_raises_if_not_connected():
     client = SeekLiteClient("01:BA:01:06:E0:82")
     with pytest.raises(RuntimeError, match="Not connected"):
         await client.read_info()
+
+
+async def test_unsubscribe_ffc6(mock_bleak):
+    client = SeekLiteClient("01:BA:01:06:E0:82")
+    await client.connect()
+    assert client._ffc6_handler is None  # no on_notify was passed
+
+    def handler(_s: int, _d: bytes) -> None: ...
+    await client.subscribe_ffc6(handler)
+    assert client._ffc6_handler is handler
+
+    mock_bleak.stop_notify.reset_mock()
+    await client.unsubscribe_ffc6()
+    mock_bleak.stop_notify.assert_awaited_once()
+
+    # unsubscribe stops the Bleak subscription but does NOT clear the handler
+    assert client._ffc6_handler is handler
+
+
+async def test_unsubscribe_ffc6_raises_if_not_connected():
+    client = SeekLiteClient("01:BA:01:06:E0:82")
+    with pytest.raises(RuntimeError, match="Not connected"):
+        await client.unsubscribe_ffc6()

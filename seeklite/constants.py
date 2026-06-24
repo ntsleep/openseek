@@ -43,9 +43,6 @@ CHAR_SOFTWARE = _uuid("2A28")
 CHAR_SYSTEM_ID = _uuid("2A23")
 CHAR_PNP_ID = _uuid("2A50")
 
-# Seek's BLE company ID (used in manufacturer advertising data)
-COMPANY_ID_SEEK = 0x1C18
-
 # Heartbeat interval config written to FFC6: [0x80, interval_seconds]
 HEARTBEAT_INTERVAL = 60
 

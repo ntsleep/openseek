@@ -8,7 +8,6 @@ from seeklite.constants import (
     CHAR_BATTERY_LEVEL,
     CHAR_FFC6_NOTIFY,
     CHAR_FFF1_AUTH,
-    COMPANY_ID_SEEK,
     HEARTBEAT_INTERVAL,
     SERVICE_FFC0,
     SERVICE_IMMEDIATE_ALERT,
@@ -44,10 +43,6 @@ def test_ffc0_service():
 
 def test_ffc6_char():
     assert str(CHAR_FFC6_NOTIFY) == "0000ffc6-0000-1000-8000-00805f9b34fb"
-
-
-def test_company_id():
-    assert COMPANY_ID_SEEK == 0x1C18
 
 
 def test_heartbeat_interval():
