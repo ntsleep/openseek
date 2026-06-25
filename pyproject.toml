@@ -1,0 +1,58 @@
+[project]
+name = "seeklite"
+version = "0.2.0"
+requires-python = ">=3.14"
+dependencies = ["bleak>=0.22", "python-dotenv>=1.0"]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["seeklite*"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "pytest-cov>=7", "ruff>=0.15"]
+
+[tool.coverage.run]
+source = ["seeklite"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.ruff]
+target-version = "py314"
+src = ["seeklite", "tests"]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D203",    # conflict with D211 — keep D211 (no blank line before class docstring)
+    "D213",    # conflict with D212 — keep D212 (multi-line summary on first line)
+    "COM819",  # conflict with COM812 — keep COM812 (require trailing commas)
+    "ISC002",  # conflict with ISC001 — keep ISC001 (prefer implicit string concat)
+    "ERA001",  # allow commented-out code
+]
+
+[tool.ruff.lint.per-file-ignores]
+"seeklite/*" = [
+    "T201",   # print is expected in a CLI app
+    "BLE001", # catching Exception in CLI error handlers is standard
+]
+"tests/*" = [
+    "S101",    # assert is pytest idiom
+    "D",       # test names are self-documenting
+    "ANN",     # test fixtures don't need type annotations
+    "PLR2004", # magic values in test assertions are fine
+    "SLF001",  # tests need to inspect private state
+    "TRY002",  # test fakes raising Exception is acceptable
+    "PLC0415", # occasional lazy imports in tests ok
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[project.scripts]
+seeklite = "seeklite.cli:main"
