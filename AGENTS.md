@@ -8,8 +8,8 @@ BLE reverse-engineering of the Seek Lite tracker (SFST212, SnappWish LLC). The `
 
 | File | Purpose |
 |---|---|
-| `seeklite/cli.py` | CLI entry point with subcommands: `ring`, `stop`, `info`, `monitor`, `scan`, `disconnect` |
-| `seeklite/client.py` | `SeekLiteClient` — connect(scan_timeout, on_notify), auth, ring (auto-stop), stop, read_info (`str | None`), subscribe_ffc6 (handler-only, no re-subscribe), disconnect |
+| `seeklite/cli.py` | CLI entry point with subcommands: `ring`, `stop`, `info`, `monitor`, `scan`, `discover`, `disconnect` |
+| `seeklite/client.py` | `SeekLiteClient` — connect(scan_timeout, on_notify), auth, ring (auto-stop), stop, read_info (`str | None`), subscribe_ffc6 (handler-only, no re-subscribe), disconnect, discover |
 | `seeklite/constants.py` | All GATT UUIDs (custom + standard), auth company ID, alert level values |
 | `seeklite/auth.py` | XOR raw manufacturer payload (Bleak strips company ID) → auth byte |
 | `seeklite/ffc6.py` | Parse FFC6 notification packet (flags-based offsets for battery/button/heartbeat) |
@@ -40,6 +40,12 @@ uv run seeklite ring
 
 - Python >= 3.14
 - `bleak` and `python-dotenv` (installed automatically via `uv sync`)
+
+## Quality checks
+
+- **Ruff**: always run `uvx --isolated ruff check --no-cache .` after any code changes and fix all errors.
+- **Tests**: always write tests for new functionality and update tests for changed functionality. Run full suite with `uv run pytest tests/`.
+- **Test style**: follow existing patterns — use `unittest.mock.patch` for mocking BLE, `capsys` for output assertions, parenthesized `with` for context managers, and pytest-asyncio with `asyncio_mode = auto`.
 
 ## Notes
 
