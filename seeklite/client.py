@@ -57,6 +57,20 @@ def _auth_from_mac(address: str) -> int:
 class SeekLiteClient:
     """Manages BLE connection and interaction with a Seek Lite tracker."""
 
+    @staticmethod
+    async def discover(
+        scan_timeout: float = 10.0,
+    ) -> list[tuple[str, int, str | None, dict[int, bytes]]]:
+        """Scan for all BLE devices and return their details.
+
+        Returns a list of ``(address, rssi, name, manufacturer_data)`` tuples.
+        """
+        devices = await BleakScanner.discover(timeout=scan_timeout, return_adv=True)
+        result: list[tuple[str, int, str | None, dict[int, bytes]]] = []
+        for addr, (_device, adv_data) in sorted(devices.items()):
+            result.append((addr, adv_data.rssi, _device.name, adv_data.manufacturer_data))
+        return result
+
     def __init__(self, address: str) -> None:
         """Initialize the client with a tracker MAC address."""
         self.address = address

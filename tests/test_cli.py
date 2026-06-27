@@ -61,12 +61,74 @@ class TestArgparse:
         with pytest.raises(SystemExit), patch.object(sys, "argv", testargs):
             main()
 
+    def test_discover_subcommand(self, capsys):
+        from seeklite.cli import main
+
+        testargs = ["seeklite", "discover"]
+        with (
+            patch("seeklite.client.SeekLiteClient.discover", return_value=[]),
+            patch.object(sys, "argv", testargs),
+        ):
+            main()
+
+        captured = capsys.readouterr()
+        assert "No devices found" in captured.out
+
+    def test_discover_with_timeout(self, capsys):
+        from seeklite.cli import main
+
+        testargs = ["seeklite", "discover", "--timeout", "5"]
+        with (
+            patch("seeklite.client.SeekLiteClient.discover", return_value=[]),
+            patch.object(sys, "argv", testargs),
+        ):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Scanning for 5 seconds" in captured.out
+
     def test_no_command_exits(self):
         from seeklite.cli import main
 
         testargs = ["seeklite", "--address", "AA:BB:CC:DD:EE:FF"]
         with pytest.raises(SystemExit), patch.object(sys, "argv", testargs):
             main()
+
+
+class TestDiscover:
+    DISCOVER_ARGV = ("seeklite", "discover")
+
+    def test_discover_prints_devices(self, capsys):
+        from seeklite.cli import main
+
+        devices = [
+            ("aa:bb:cc:dd:ee:ff", -50, "Tracker", {0x6313: b"\xde\xad"}),
+            ("11:22:33:44:55:66", -70, None, {}),
+        ]
+
+        with (
+            patch("seeklite.client.SeekLiteClient.discover", return_value=devices),
+            patch.object(sys, "argv", self.DISCOVER_ARGV),
+        ):
+            main()
+
+        captured = capsys.readouterr()
+        assert "aa:bb:cc:dd:ee:ff" in captured.out
+        assert "Tracker" in captured.out
+        assert "(unknown)" in captured.out
+        assert "6313" in captured.out
+
+    def test_discover_no_devices(self, capsys):
+        from seeklite.cli import main
+
+        with (
+            patch("seeklite.client.SeekLiteClient.discover", return_value=[]),
+            patch.object(sys, "argv", self.DISCOVER_ARGV),
+        ):
+            main()
+
+        captured = capsys.readouterr()
+        assert "No devices found" in captured.out
 
 
 class TestMainErrorHandling:

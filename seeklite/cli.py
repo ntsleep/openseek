@@ -109,6 +109,23 @@ async def _cmd_scan(args: argparse.Namespace) -> None:
     print("Tracker not seen advertising.")
 
 
+async def _cmd_discover(args: argparse.Namespace) -> None:
+    """Scan for all BLE devices and display them to help find the tracker MAC."""
+    print(f"Scanning for {args.timeout} seconds...\n")
+    devices = await SeekLiteClient.discover(scan_timeout=args.timeout)
+
+    if not devices:
+        print("No devices found.")
+        return
+
+    print(f"{'Address':20} {'RSSI':6} {'Name':20} {'Manufacturer Data'}")
+    print("-" * 80)
+    for addr, rssi, name, mfg in devices:
+        name_label = name or "(unknown)"
+        mfg_str = " ".join(f"{cid:04x}={payload.hex()}" for cid, payload in mfg.items())
+        print(f"{addr:20} {rssi:<6} {name_label:20} {mfg_str}")
+
+
 async def _cmd_disconnect(args: argparse.Namespace) -> None:
     try:
         async with _connected_client(args) as client:
@@ -151,6 +168,12 @@ def main() -> None:
         "--timeout", "-t", type=int, default=10, help="Scan duration in seconds",
     )
     scan_parser.set_defaults(func=_cmd_scan)
+
+    discover_parser = subparsers.add_parser("discover", help="Scan for all BLE devices to find the tracker MAC")
+    discover_parser.add_argument(
+        "--timeout", "-t", type=int, default=10, help="Scan duration in seconds",
+    )
+    discover_parser.set_defaults(func=_cmd_discover)
 
     disconnect_parser = subparsers.add_parser("disconnect", help="Force-disconnect a stuck connection")
     disconnect_parser.set_defaults(func=_cmd_disconnect)

@@ -311,3 +311,37 @@ async def test_unsubscribe_ffc6_raises_if_not_connected():
     client = SeekLiteClient("AA:BB:CC:DD:EE:FF")
     with pytest.raises(RuntimeError, match="Not connected"):
         await client.unsubscribe_ffc6()
+
+
+async def test_discover_returns_devices():
+    device1 = MagicMock()
+    device1.name = "Tracker"
+    device2 = MagicMock()
+    device2.name = None
+
+    adv1 = MagicMock()
+    adv1.rssi = -50
+    adv1.manufacturer_data = {0x6313: b"\xde\xad"}
+
+    adv2 = MagicMock()
+    adv2.rssi = -70
+    adv2.manufacturer_data = {}
+
+    discover_results = {
+        "aa:bb:cc:dd:ee:ff": (device1, adv1),
+        "11:22:33:44:55:66": (device2, adv2),
+    }
+
+    with patch("seeklite.client.BleakScanner.discover", return_value=discover_results):
+        devices = await SeekLiteClient.discover(scan_timeout=5.0)
+
+    assert devices == [
+        ("11:22:33:44:55:66", -70, None, {}),
+        ("aa:bb:cc:dd:ee:ff", -50, "Tracker", {0x6313: b"\xde\xad"}),
+    ]
+
+
+async def test_discover_empty():
+    with patch("seeklite.client.BleakScanner.discover", return_value={}):
+        devices = await SeekLiteClient.discover(scan_timeout=5.0)
+    assert devices == []
