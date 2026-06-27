@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 from bleak import BleakScanner
+from bleak.exc import BleakDeviceNotFoundError
 from dotenv import load_dotenv
 
 from seeklite.client import SeekLiteClient
@@ -155,4 +156,14 @@ def main() -> None:
     disconnect_parser.set_defaults(func=_cmd_disconnect)
 
     args = parser.parse_args()
-    asyncio.run(args.func(args))
+    try:
+        asyncio.run(args.func(args))
+    except BleakDeviceNotFoundError:
+        print("Error: Device not found — is it powered on and in range?")
+        sys.exit(1)
+    except TimeoutError:
+        print("Error: Operation timed out — is the device in range?")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)

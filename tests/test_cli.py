@@ -4,6 +4,7 @@ from argparse import Namespace
 from unittest.mock import patch
 
 import pytest
+from bleak.exc import BleakDeviceNotFoundError
 from seeklite.cli import _get_address
 
 
@@ -66,3 +67,51 @@ class TestArgparse:
         testargs = ["seeklite", "--address", "AA:BB:CC:DD:EE:FF"]
         with pytest.raises(SystemExit), patch.object(sys, "argv", testargs):
             main()
+
+
+class TestMainErrorHandling:
+    """Verify that main() catches errors and prints user-friendly messages."""
+
+    ARGV = ("seeklite", "--address", "AA:BB:CC:DD:EE:FF", "ring")
+
+    def test_device_not_found(self, capsys):
+        from seeklite.cli import main
+
+        with (
+            patch("seeklite.client.SeekLiteClient.connect", side_effect=BleakDeviceNotFoundError("AA:BB:CC:DD:EE:FF")),
+            patch.object(sys, "argv", self.ARGV),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Error: Device not found" in captured.out
+        assert exc_info.value.code == 1
+
+    def test_timeout_error(self, capsys):
+        from seeklite.cli import main
+
+        with (
+            patch("seeklite.client.SeekLiteClient.connect", side_effect=TimeoutError()),
+            patch.object(sys, "argv", self.ARGV),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Error: Operation timed out" in captured.out
+        assert exc_info.value.code == 1
+
+    def test_generic_exception(self, capsys):
+        from seeklite.cli import main
+
+        with (
+            patch("seeklite.client.SeekLiteClient.connect", side_effect=RuntimeError("device disconnected")),
+            patch.object(sys, "argv", self.ARGV),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Error: device disconnected" in captured.out
+        assert exc_info.value.code == 1
