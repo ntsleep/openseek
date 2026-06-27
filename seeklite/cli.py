@@ -89,10 +89,13 @@ async def _cmd_monitor(args: argparse.Namespace) -> None:
         loop.add_signal_handler(signal.SIGINT, _signal_handler)
         loop.add_signal_handler(signal.SIGTERM, _signal_handler)
 
-        await stop_event.wait()
-
-        await client.unsubscribe_ffc6()
-        print("\nDisconnected.")
+        try:
+            await stop_event.wait()
+        finally:
+            loop.remove_signal_handler(signal.SIGINT)
+            loop.remove_signal_handler(signal.SIGTERM)
+            await client.unsubscribe_ffc6()
+            print("\nDisconnected.")
 
 
 async def _cmd_scan(args: argparse.Namespace) -> None:
@@ -127,13 +130,9 @@ async def _cmd_discover(args: argparse.Namespace) -> None:
 
 
 async def _cmd_disconnect(args: argparse.Namespace) -> None:
-    try:
-        async with _connected_client(args) as client:
-            print("Disconnecting...")
-            await client.disconnect()
-            print("Done.")
-    except Exception as e:
-        print(f"Error: {e}")
+    async with _connected_client(args) as _:
+        print("Disconnecting...")
+        print("Done.")
 
 
 def main() -> None:

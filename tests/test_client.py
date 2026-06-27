@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -153,6 +154,17 @@ async def test_connect_with_scan(mock_bleak):
 
 
 @pytest.mark.usefixtures("mock_bleak")
+async def test_connect_scan_timeout_capped():
+    """connect() caps scan_timeout to 1s irrespective of the caller's value."""
+    with patch("seeklite.client.BleakScanner.discover") as mock_discover:
+        mock_discover.return_value = {}  # no tracker found — fine, fallback to MAC
+        client = SeekLiteClient("AA:BB:CC:DD:EE:FF")
+        await client.connect(scan_timeout=60.0)
+        # the actual timeout passed to BleakScanner must not exceed 1
+        assert mock_discover.call_args[1]["timeout"] == 1.0
+
+
+@pytest.mark.usefixtures("mock_bleak")
 async def test_connect_fallback_to_mac():
     # override fixture's discover to simulate tracker not found in scan
     with patch("seeklite.client.BleakScanner.discover", return_value={}):
@@ -272,6 +284,23 @@ async def test_read_info_failure_returns_none(mock_bleak):
     assert info["battery"] is None
 
 
+async def test_ring_suppresses_disconnect_during_sleep(mock_bleak):
+    """ring() should not raise if the device disconnects during the sleep period."""
+    client = SeekLiteClient("AA:BB:CC:DD:EE:FF")
+    await client.connect()
+
+    # patch sleep in client.py so the ring's sleep triggers a disconnect
+    real_sleep = asyncio.sleep
+
+    async def _disconnect_during_sleep(duration: float) -> None:
+        mock_bleak.is_connected = False
+        await real_sleep(duration)
+
+    with patch("seeklite.client.asyncio.sleep", _disconnect_during_sleep):
+        await client.ring(0.01)
+    # should not raise RuntimeError
+
+
 async def test_ring_raises_if_not_connected():
     client = SeekLiteClient("AA:BB:CC:DD:EE:FF")
     with pytest.raises(RuntimeError, match="Not connected"):
@@ -303,8 +332,8 @@ async def test_unsubscribe_ffc6(mock_bleak):
     await client.unsubscribe_ffc6()
     mock_bleak.stop_notify.assert_awaited_once()
 
-    # unsubscribe stops the Bleak subscription but does NOT clear the handler
-    assert client._ffc6_handler is handler
+    # unsubscribe also clears the handler (consistent with disconnect())
+    assert client._ffc6_handler is None
 
 
 async def test_unsubscribe_ffc6_raises_if_not_connected():

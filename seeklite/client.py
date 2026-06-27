@@ -34,6 +34,11 @@ _BEACON_IDS = {0x004C, 0x00E0, 0x00FF, 0x0130, 0x0157, 0x018B, 0x01AC}
 
 _NOT_CONNECTED_MSG = "Not connected. Call connect() first."
 
+# BLE settling delays — the device needs a short pause after auth write
+# and after enabling notifications before the next operation.
+_POST_AUTH_DELAY = 0.1
+_POST_SUBSCRIBE_DELAY = 0.2
+
 
 def _pick_mfg_payload(manufacturer_data: dict[int, bytes]) -> bytes | None:
     """Return the first manufacturer payload that is not a known beacon ID.
@@ -92,7 +97,8 @@ class SeekLiteClient:
 
         Falls back to MAC-derived auth byte if the tracker is not found
         in scan results. The scan phase is capped at 1s since it only
-        looks for manufacturer data.
+        looks for manufacturer data — a full-length scan is unnecessary
+        and would delay connection.
 
         If *on_notify* is provided it will be set as the initial FFC6
         notification handler; otherwise no-ops until ``subscribe_ffc6()``
@@ -119,7 +125,7 @@ class SeekLiteClient:
         await self._client.write_gatt_char(
             CHAR_FFF1_AUTH, bytearray([auth_byte]), response=True,
         )
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(_POST_AUTH_DELAY)
 
         service = self._client.services.get_service(SERVICE_IMMEDIATE_ALERT)
         self._alert_handle = service.get_characteristic(CHAR_ALERT_LEVEL).handle
@@ -129,7 +135,7 @@ class SeekLiteClient:
                 self._ffc6_handler(sender, data)
 
         await self._client.start_notify(CHAR_FFC6_NOTIFY, _notify_wrapper)
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(_POST_SUBSCRIBE_DELAY)
 
     async def disconnect(self) -> None:
         """Unsubscribe from notifications and disconnect."""
@@ -148,7 +154,10 @@ class SeekLiteClient:
             self._alert_handle, bytearray([ALERT_HIGH]), response=False,
         )
         await asyncio.sleep(duration)
-        await self.stop()
+        # device may disconnect during sleep — suppress so the caller isn't
+        # presented with a confusing RuntimeError after a successful ring
+        with contextlib.suppress(RuntimeError):
+            await self.stop()
 
     async def stop(self) -> None:
         """Stop the active alert immediately."""
@@ -200,9 +209,10 @@ class SeekLiteClient:
         self._ffc6_handler = callback
 
     async def unsubscribe_ffc6(self) -> None:
-        """Unsubscribe from FFC6 notification characteristic."""
+        """Unsubscribe from FFC6 notification characteristic and clear the handler."""
         self._check_connected()
         await self._client.stop_notify(CHAR_FFC6_NOTIFY)
+        self._ffc6_handler = None
 
     def _check_connected(self) -> None:
         """Raise RuntimeError if the client is not connected."""
