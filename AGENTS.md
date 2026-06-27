@@ -22,6 +22,7 @@ uv run seeklite ring [--duration 3] --address AA:BB:CC:DD:EE:FF
 uv run seeklite info --address AA:BB:CC:DD:EE:FF
 uv run seeklite monitor --address AA:BB:CC:DD:EE:FF
 uv run seeklite scan --address AA:BB:CC:DD:EE:FF
+uv run seeklite discover [--timeout 10]
 uv run seeklite disconnect --address AA:BB:CC:DD:EE:FF
 
 # Or set env var:
@@ -46,6 +47,7 @@ uv run seeklite ring
 - **Ruff**: always run `uvx --isolated ruff check --no-cache .` after any code changes and fix all errors.
 - **Tests**: always write tests for new functionality and update tests for changed functionality. Run full suite with `uv run pytest tests/`.
 - **Test style**: follow existing patterns — use `unittest.mock.patch` for mocking BLE, `capsys` for output assertions, parenthesized `with` for context managers, and pytest-asyncio with `asyncio_mode = auto`.
+- **README**: always update `README.md` when adding new functionality (commands, features, options). Otherwise a stale README misleads users.
 
 ## Notes
 
