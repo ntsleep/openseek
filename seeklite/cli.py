@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 from bleak import BleakScanner
+from bleak.exc import BleakDeviceNotFoundError
 from dotenv import load_dotenv
 
 from seeklite.client import SeekLiteClient
@@ -88,10 +89,13 @@ async def _cmd_monitor(args: argparse.Namespace) -> None:
         loop.add_signal_handler(signal.SIGINT, _signal_handler)
         loop.add_signal_handler(signal.SIGTERM, _signal_handler)
 
-        await stop_event.wait()
-
-        await client.unsubscribe_ffc6()
-        print("\nDisconnected.")
+        try:
+            await stop_event.wait()
+        finally:
+            loop.remove_signal_handler(signal.SIGINT)
+            loop.remove_signal_handler(signal.SIGTERM)
+            await client.unsubscribe_ffc6()
+            print("\nDisconnected.")
 
 
 async def _cmd_scan(args: argparse.Namespace) -> None:
@@ -108,14 +112,27 @@ async def _cmd_scan(args: argparse.Namespace) -> None:
     print("Tracker not seen advertising.")
 
 
+async def _cmd_discover(args: argparse.Namespace) -> None:
+    """Scan for all BLE devices and display them to help find the tracker MAC."""
+    print(f"Scanning for {args.timeout} seconds...\n")
+    devices = await SeekLiteClient.discover(scan_timeout=args.timeout)
+
+    if not devices:
+        print("No devices found.")
+        return
+
+    print(f"{'Address':20} {'RSSI':6} {'Name':20} {'Manufacturer Data'}")
+    print("-" * 80)
+    for addr, rssi, name, mfg in devices:
+        name_label = name or "(unknown)"
+        mfg_str = " ".join(f"{cid:04x}={payload.hex()}" for cid, payload in mfg.items())
+        print(f"{addr:20} {rssi:<6} {name_label:20} {mfg_str}")
+
+
 async def _cmd_disconnect(args: argparse.Namespace) -> None:
-    try:
-        async with _connected_client(args) as client:
-            print("Disconnecting...")
-            await client.disconnect()
-            print("Done.")
-    except Exception as e:
-        print(f"Error: {e}")
+    async with _connected_client(args) as _:
+        print("Disconnecting...")
+        print("Done.")
 
 
 def main() -> None:
@@ -151,8 +168,24 @@ def main() -> None:
     )
     scan_parser.set_defaults(func=_cmd_scan)
 
+    discover_parser = subparsers.add_parser("discover", help="Scan for all BLE devices to find the tracker MAC")
+    discover_parser.add_argument(
+        "--timeout", "-t", type=int, default=10, help="Scan duration in seconds",
+    )
+    discover_parser.set_defaults(func=_cmd_discover)
+
     disconnect_parser = subparsers.add_parser("disconnect", help="Force-disconnect a stuck connection")
     disconnect_parser.set_defaults(func=_cmd_disconnect)
 
     args = parser.parse_args()
-    asyncio.run(args.func(args))
+    try:
+        asyncio.run(args.func(args))
+    except BleakDeviceNotFoundError:
+        print("Error: Device not found — is it powered on and in range?")
+        sys.exit(1)
+    except TimeoutError:
+        print("Error: Operation timed out — is the device in range?")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)

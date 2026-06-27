@@ -59,6 +59,9 @@ seeklite monitor
 # Check if tracker is advertising
 seeklite scan
 
+# Scan for all BLE devices to find the tracker MAC
+seeklite discover --timeout 15
+
 # Force-disconnect a stuck connection
 seeklite disconnect
 ```
