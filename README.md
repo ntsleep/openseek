@@ -92,4 +92,4 @@ ruff check
 
 ## Protocol
 
-Authentication is required before any alert write — see `project_decription.md` for full protocol details.
+Authentication is required before any alert write — see `project_description.md` for full protocol details.
