@@ -13,7 +13,7 @@ BLE reverse-engineering of the Seek Lite tracker (SFST212, SnappWish LLC). The `
 | `seeklite/constants.py` | All GATT UUIDs (custom + standard), auth company ID, alert level values |
 | `seeklite/auth.py` | XOR raw manufacturer payload (Bleak strips company ID) → auth byte |
 | `seeklite/ffc6.py` | Parse FFC6 notification packet (flags-based offsets for battery/button/heartbeat) |
-| `project_decription.md` | Full protocol documentation |
+| `project_description.md` | Full protocol documentation |
 
 ## Commands
 
